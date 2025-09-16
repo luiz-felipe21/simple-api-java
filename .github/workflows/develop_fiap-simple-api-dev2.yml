@@ -1,0 +1,63 @@
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - fiap-simple-api-dev2
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read #This is required for actions/checkout
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to container registry
+        uses: docker/login-action@v2
+        with:
+          registry: index.docker.io/
+          username: ${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_7FCE8F82737D4004A7B6EC208F2B88F5 }}
+          password: ${{ secrets.AZUREAPPSERVICE_CONTAINERPASSWORD_5BFD939BA3394126BB083F6D6BE8BA7A }}
+
+      - name: Build and push container image to registry
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: index.docker.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_7FCE8F82737D4004A7B6EC208F2B88F5 }}/luizfelipe21/simple-api-java:${{ github.sha }}
+          file: ./Dockerfile
+
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
+
+    needs: build
+    
+    steps:
+      
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_ABE5C56D4C0F4DC692CAA22BF1C46EF3 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_E794F52F22914538BE993024EF2F10F5 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_C503EBB06F80442B9A82B309A1125BEA }}
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'fiap-simple-api-dev2'
+          slot-name: 'Production'
+          images: 'index.docker.io/${{ secrets.AZUREAPPSERVICE_CONTAINERUSERNAME_7FCE8F82737D4004A7B6EC208F2B88F5 }}/luizfelipe21/simple-api-java:${{ github.sha }}'
+          
